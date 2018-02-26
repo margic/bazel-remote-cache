@@ -1,0 +1,12 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "go_default_library",
+    srcs = ["server.go"],
+    importpath = "github.com/margic/bazel-s3-cache/api",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//store:go_default_library",
+        "//vendor/github.com/gorilla/mux:go_default_library",
+    ],
+)
