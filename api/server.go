@@ -3,12 +3,13 @@ package api
 import (
 	"context"
 	"io"
-	"log"
 	"net/http"
+	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/gorilla/mux"
 	"github.com/margic/bazel-s3-cache/store"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // Server the api server that serves the cache endpoints
@@ -28,6 +29,7 @@ func NewServer(stor store.Storer) (*Server, error) {
 	r.HandleFunc("/ac/{id}", s.Getac).Methods("Get")
 	r.HandleFunc("/cas/{id}", s.Putcas).Methods("Put")
 	r.HandleFunc("/cas/{id}", s.Getcas).Methods("Get")
+	r.Handle("/metrics", promhttp.Handler())
 
 	s.Handler = r
 	return s, nil
@@ -35,7 +37,6 @@ func NewServer(stor store.Storer) (*Server, error) {
 
 // Putac  handles bazel cache put
 func (s *Server) Putac(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Putac")
 	vars := mux.Vars(r)
 	id := vars["id"]
 	err := s.Store.Put(context.Background(), "ac", id, r.Body)
@@ -47,7 +48,6 @@ func (s *Server) Putac(w http.ResponseWriter, r *http.Request) {
 
 // Putcas handles bazel cache put
 func (s *Server) Putcas(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Putac")
 	vars := mux.Vars(r)
 	id := vars["id"]
 	err := s.Store.Put(context.Background(), "cas", id, r.Body)
@@ -59,22 +59,28 @@ func (s *Server) Putcas(w http.ResponseWriter, r *http.Request) {
 
 // Getac handles bazel cache get
 func (s *Server) Getac(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Getac")
 	vars := mux.Vars(r)
 	id := vars["id"]
 	_, err := s.Get(w, id, "ac")
 	if err != nil {
+		if strings.Contains(err.Error(), "404") {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
 // Getcas handles bazel cache get
 func (s *Server) Getcas(w http.ResponseWriter, r *http.Request) {
-	log.Printf("Getac")
 	vars := mux.Vars(r)
 	id := vars["id"]
 	_, err := s.Get(w, id, "cas")
 	if err != nil {
+		if strings.Contains(err.Error(), "404") {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
